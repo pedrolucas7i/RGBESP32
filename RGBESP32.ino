@@ -94,31 +94,37 @@ const char index_html[] PROGMEM = R"rawliteral(
   <button onclick="changeColor()">Change Color</button>
 
   <script>
+    function clamp(value) {
+      return Math.max(0, Math.min(255, isNaN(value) ? 0 : value));
+    }
+  
     function changeColor() {
       const r = clamp(parseInt(document.getElementById('red').value));
       const g = clamp(parseInt(document.getElementById('green').value));
       const b = clamp(parseInt(document.getElementById('blue').value));
-
+  
       const neopixel = document.getElementById('neopixel');
       const color = `rgb(${r}, ${g}, ${b})`;
-
-      // Brilho do centro + halo externo
+  
+      // Atualiza visualmente o neopixel
       neopixel.style.background = `radial-gradient(circle at center, rgba(${r},${g},${b},1) 0%, rgba(${r},${g},${b},0.1) 70%)`;
       neopixel.style.boxShadow = `0 0 40px rgba(${r},${g},${b}, 0.7), 0 0 100px rgba(${r},${g},${b}, 0.3)`;
+  
+      // Enviar valores para o servidor
+      const ip = window.location.hostname;
+      const url = `http://${ip}/LEDSTRIP?r=${r}&g=${g}&b=${b}`;
+      fetch(url)
+        .then(response => {
+          if (!response.ok) throw new Error('Erro ao enviar cor para o servidor');
+          console.log("Sucess sending color!");
+        })
+        .catch(err => console.error(err));
     }
-
-    function clamp(value) {
-      return Math.max(0, Math.min(255, isNaN(value) ? 0 : value));
-    }
-
-    const ip = window.location.hostname;
-    window.location.href = `${ip}?led=${r}&led=${g}&led=${b}`
-
   </script>
+  
 
 </body>
 </html>
-
 )rawliteral";
 
 
@@ -133,7 +139,7 @@ void LEDSTRIP() {
   snprintf(neopixel, 3000, index_html, server.arg(0).toInt(), server.arg(1).toInt(), server.arg(2).toInt());
   
   server.send(200, "text/html", neopixel);
-  if (server.argName(0) == "led" && server.argName(1) == "led" && server.argName(2) == "led") {
+  if (server.argName(0) == "r" && server.argName(1) == "g" && server.argName(2) == "b") {
     NeoPixel.clear();
     NeoPixel.show();
     delay(1000);
