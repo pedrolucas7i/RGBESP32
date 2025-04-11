@@ -27,10 +27,11 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     .neopixel {
-      width: 120px;
-      height: 120px;
+      width: 250px;
+      height: 250px;
       margin: 30px auto;
       border-radius: 50%;
+      border-radius: 100vw;
       background: radial-gradient(circle at center, #000 0%, #222 100%);
       box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
       transition: background 0.3s, box-shadow 0.3s;
