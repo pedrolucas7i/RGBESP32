@@ -9,14 +9,130 @@
 
 const char *ssid = "MEO-830900";
 const char *password = "d0cc9ef64c";
+const char *ESP32hostname = "RGBESP32";
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>NeoPixel RGB</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #111;
+      color: #fff;
+      padding: 40px;
+    }
+
+    .neopixel {
+      width: 120px;
+      height: 120px;
+      margin: 30px auto;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #000 0%, #222 100%);
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .inputs {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    input[type=number] {
+      width: 70px;
+      padding: 5px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      margin-top: 25px;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background-color: #333;
+      color: white;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Control of NeoPixel RGB</h1>
+  <div class="neopixel" id="neopixel"></div>
+
+  <div class="inputs">
+    <div>
+      <label>R:</label><br>
+      <input type="number" id="red" min="0" max="255" value="0">
+    </div>
+    <div>
+      <label>G:</label><br>
+      <input type="number" id="green" min="0" max="255" value="0">
+    </div>
+    <div>
+      <label>B:</label><br>
+      <input type="number" id="blue" min="0" max="255" value="0">
+    </div>
+  </div>
+
+  <button onclick="changeColor()">Change Color</button>
+
+  <script>
+    function changeColor() {
+      const r = clamp(parseInt(document.getElementById('red').value));
+      const g = clamp(parseInt(document.getElementById('green').value));
+      const b = clamp(parseInt(document.getElementById('blue').value));
+
+      const neopixel = document.getElementById('neopixel');
+      const color = `rgb(${r}, ${g}, ${b})`;
+
+      // Brilho do centro + halo externo
+      neopixel.style.background = `radial-gradient(circle at center, rgba(${r},${g},${b},1) 0%, rgba(${r},${g},${b},0.1) 70%)`;
+      neopixel.style.boxShadow = `0 0 40px rgba(${r},${g},${b}, 0.7), 0 0 100px rgba(${r},${g},${b}, 0.3)`;
+    }
+
+    function clamp(value) {
+      return Math.max(0, Math.min(255, isNaN(value) ? 0 : value));
+    }
+
+    const ip = window.location.hostname;
+    window.location.href = `${ip}?led=${r}&led=${g}&led=${b}`
+
+  </script>
+
+</body>
+</html>
+
+)rawliteral";
+
 
 WebServer server(80);
 
 Adafruit_NeoPixel NeoPixel(NUM_PIXELS, PIN_NEO_PIXEL, NEO_GRB + NEO_KHZ800);
 
 
-void handleRoot() {
-  server.send(200, "text/plain", "hello from esp32!");
+void LEDSTRIP() {
+  char neopixel[3000];
+  
+  snprintf(neopixel, 3000, index_html, server.arg(0).toInt(), server.arg(1).toInt(), server.arg(2).toInt());
+  
+  server.send(200, "text/html", neopixel);
   if (server.argName(0) == "led" && server.argName(1) == "led" && server.argName(2) == "led") {
     NeoPixel.clear();
     NeoPixel.show();
@@ -47,6 +163,7 @@ void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  WiFi.setHostname(ESP32hostname);      // Define ESP32 Hostname
   Serial.println("");
 
   // Wait for connection
@@ -64,7 +181,9 @@ void setup() {
     Serial.println("MDNS responder started");
   }
 
-  server.on("/", handleRoot);
+  server.on("/", LEDSTRIP);
+
+  server.on("/LEDSTRIP", LEDSTRIP);
 
   server.on("/inline", []() {
     server.send(200, "text/plain", "this works as well");
